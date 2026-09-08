@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+    />
+    <title>Us — Pet Dashboard</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              bg: "#0B1626",
+              surface: "#14243B",
+              "surface-alt": "#1C3350",
+              ocean: "#3FA9E0",
+              "ocean-deep": "#1E6FA8",
+              text: "#E8F1FB",
+              muted: "#7E97B5",
+            },
+            fontFamily: {
+              display: ['"Baloo 2"', "sans-serif"],
+              body: ["Inter", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      body {
+        -webkit-tap-highlight-color: transparent;
+      }
+      .habitat-glow {
+        background:
+          radial-gradient(
+            circle at 50% 30%,
+            rgba(63, 169, 224, 0.35),
+            transparent 60%
+          ),
+          linear-gradient(180deg, #16283f 0%, #0f1f33 100%);
+      }
+      .exp-fill {
+        background: linear-gradient(90deg, #1e6fa8 0%, #3fa9e0 100%);
+      }
+      .nav-item.active .nav-icon {
+        color: #3fa9e0;
+      }
+      .nav-item.active .nav-label {
+        color: #e8f1fb;
+      }
+
+      .panel {
+        display: none;
+      }
+      .panel.active {
+        display: block;
+      }
+
+      #level-up-toast {
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 0.25s ease,
+          transform 0.25s ease;
+        transform: translateY(-8px);
+      }
+      #level-up-toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #level-up-toast {
+          transition: opacity 0.01ms;
+          transform: none;
+        }
+      }
+
+      .task-row.done {
+        opacity: 0.5;
+      }
+      .task-row.done .task-exp {
+        color: #3fa9e0;
+      }
+
+      .answer-textarea {
+        background: #0f1f33;
+        border: 1px solid rgba(63, 169, 224, 0.25);
+      }
+      .answer-textarea:focus {
+        outline: none;
+        border-color: #3fa9e0;
+      }
+      .locked-face {
+        letter-spacing: 0.05em;
+      }
+      .reveal-fade {
+        animation: revealIn 0.4s ease both;
+      }
+      @keyframes revealIn {
+        from {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .reveal-fade {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+
+  <body class="bg-bg text-text font-body min-h-screen flex flex-col">
+    <!-- Status strip -->
+    <header class="flex items-center justify-between px-5 pt-5 pb-3">
+      <div class="flex flex-col">
+        <span class="text-sm text-muted leading-tight">Us</span>
+        <span class="text-base font-medium leading-tight">Day 14 streak</span>
+      </div>
+      <div
+        class="flex items-center gap-1.5 bg-surface px-3 py-1.5 rounded-full"
+      >
+        <span class="text-base leading-none">🔥</span>
+        <span class="font-display font-600 text-sm">14</span>
+      </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="flex-1 px-5 pb-28">
+      <!-- Habitat card -->
+      <section
+        class="habitat-glow rounded-3xl h-72 relative flex items-center justify-center overflow-hidden mt-2"
+      >
+        <span
+          id="level-badge"
+          class="absolute top-4 left-4 bg-surface/80 backdrop-blur-sm text-xs font-medium text-muted px-3 py-1 rounded-full"
+        >
+          Lv. 3
+        </span>
+
+        <!-- Level-up toast -->
+        <div
+          id="level-up-toast"
+          class="absolute top-4 right-4 bg-ocean-deep text-text text-xs font-display font-600 px-3 py-1.5 rounded-full"
+        >
+          Level up!
+        </div>
+
+        <!-- Pet placeholder -->
+        <div
+          id="pet-placeholder"
+          class="w-32 h-32 rounded-full bg-surface-alt border border-ocean/30 flex flex-col items-center justify-center"
+        >
+          <span id="pet-emoji" class="text-5xl leading-none">🥚</span>
+          <span id="pet-stage-name" class="text-muted text-xs mt-1">Egg</span>
+        </div>
+      </section>
+
+      <!-- EXP row -->
+      <section class="mt-5">
+        <div class="flex items-baseline justify-between mb-2">
+          <span id="pet-name" class="font-display font-600 text-lg">Otto</span>
+          <span class="font-display text-sm text-muted">
+            <span id="exp-current">0</span> / <span id="exp-max">0</span> EXP
+          </span>
+        </div>
+        <div class="w-full h-3 bg-surface rounded-full overflow-hidden">
+          <div
+            id="exp-bar"
+            class="exp-fill h-full rounded-full transition-[width] duration-500 ease-out"
+            style="width: 0%"
+          ></div>
+        </div>
+      </section>
+
+      <!-- Quick stats -->
+      <section class="mt-6 grid grid-cols-2 gap-3">
+        <div class="bg-surface rounded-2xl px-4 py-3">
+          <span class="block text-muted text-xs mb-1">Tasks today</span>
+          <span id="stat-tasks-done" class="font-display font-600 text-xl"
+            >0 / 0</span
+          >
+        </div>
+        <div class="bg-surface rounded-2xl px-4 py-3">
+          <span class="block text-muted text-xs mb-1">Coupons saved</span>
+          <span class="font-display font-600 text-xl">3</span>
+        </div>
+      </section>
+
+      <!-- Tab panels -->
+      <section class="mt-6">
+        <div id="panel-tasks" class="panel active">
+          <h2 class="font-display font-600 text-base mb-3">Today's tasks</h2>
+          <div id="task-list" class="flex flex-col gap-2"></div>
+        </div>
+
+        <div id="panel-questions" class="panel">
+          <h2 class="font-display font-600 text-base mb-1">Daily question</h2>
+          <p id="question-prompt" class="text-sm text-text mb-4"></p>
+
+          <div class="flex flex-col gap-3" id="answer-cards"></div>
+
+          <button
+            id="reveal-btn"
+            class="w-full mt-4 bg-ocean-deep text-text font-display font-600 text-sm py-3 rounded-2xl disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            Reveal answers
+          </button>
+
+          <button
+            id="new-question-btn"
+            class="w-full mt-2 text-muted text-xs py-2"
+          >
+            Ask a different question
+          </button>
+        </div>
+
+        <div id="panel-rewards" class="panel">
+          <!-- Coupon Balance Strip -->
+          <div
+            class="bg-surface rounded-2xl p-4 flex items-center justify-between mb-5 border border-ocean/20"
+          >
+            <div>
+              <span class="text-xs text-muted block">Spendable Pet Energy</span>
+              <div class="flex items-baseline gap-1.5 mt-0.5">
+                <span
+                  id="spendable-exp-val"
+                  class="font-display font-700 text-2xl text-ocean"
+                  >0</span
+                >
+                <span class="text-xs text-muted font-display">EXP</span>
+              </div>
+            </div>
+            <span class="text-2xl">🦴</span>
+          </div>
+
+          <!-- Store Section -->
+          <div class="mb-6">
+            <h3
+              class="font-display font-600 text-sm text-muted uppercase tracking-wider mb-3"
+            >
+              Pawmise Treat Shop
+            </h3>
+            <div id="coupon-catalog-list" class="flex flex-col gap-2.5"></div>
+          </div>
+
+          <!-- Active Coupons Bag -->
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h3
+                class="font-display font-600 text-sm text-muted uppercase tracking-wider"
+              >
+                Unused Coupons
+              </h3>
+              <span id="inventory-count" class="text-xs text-muted font-display"
+                >0 active</span
+              >
+            </div>
+            <div id="inventory-list" class="flex flex-col gap-2.5"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom nav -->
+    <nav
+      class="fixed bottom-0 inset-x-0 bg-surface border-t border-white/5 px-6 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
+    >
+      <div class="flex justify-between max-w-md mx-auto">
+        <button
+          class="nav-item active flex flex-col items-center gap-1 flex-1 py-1"
+          data-tab="tasks"
+        >
+          <span class="nav-icon text-xl text-ocean leading-none">🗓</span>
+          <span class="nav-label text-xs font-medium text-text">Tasks</span>
+        </button>
+
+        <button
+          class="nav-item flex flex-col items-center gap-1 flex-1 py-1"
+          data-tab="questions"
+        >
+          <span class="nav-icon text-xl text-muted leading-none">💬</span>
+          <span class="nav-label text-xs font-medium text-muted"
+            >Questions</span
+          >
+        </button>
+
+        <button
+          class="nav-item flex flex-col items-center gap-1 flex-1 py-1"
+          data-tab="rewards"
+        >
+          <span class="nav-icon text-xl text-muted leading-none">🎁</span>
+          <span class="nav-label text-xs font-medium text-muted">Rewards</span>
+        </button>
+      </div>
+    </nav>
+
+    <script>
+      const STORAGE_KEY = "petAppState_v1";
+
+      // Evolution stages by level threshold. Backend will own the source of
+      // truth for this in Phase 4; this table is duplicated there.
+      const STAGES = [
+        { minLevel: 1, name: "Newborn Pup", emoji: "🐾" },
+        { minLevel: 3, name: "Playful Pup", emoji: "🐶" },
+        { minLevel: 6, name: "Active Dog", emoji: "🐕" },
+        { minLevel: 10, name: "Loyal Hound", emoji: "🦮" },
+      ];
+
+      const DEFAULT_TASKS = [
+        { id: "clean", label: "Clean together", exp: 20, done: false },
+        { id: "duo", label: "Win a duo match", exp: 30, done: false },
+        { id: "walk", label: "Evening walk", exp: 15, done: false },
+        { id: "cook", label: "Cook dinner together", exp: 25, done: false },
+      ];
+
+      // Static pool for now — Phase 4 backend replaces this with an AI-generated
+      // question fetched per day.
+      const BACKEND_URL = "https://pawmise-3569.onrender.com"; // or local: http://localhost:5000
+
+      async function newQuestion() {
+        const btn = document.getElementById("new-question-btn");
+        btn.disabled = true;
+        btn.textContent = "Generating question...";
+
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/questions/generate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ category: "romantic" }),
+          });
+          const data = await res.json();
+
+          state.dailyQuestion.prompt = data.prompt;
+          state.dailyQuestion.revealed = false;
+          state.dailyQuestion.answers.p1 = { text: "", locked: false };
+          state.dailyQuestion.answers.p2 = { text: "", locked: false };
+
+          saveState();
+          renderQuestion();
+        } catch (err) {
+          console.error("Failed to get question:", err);
+          alert("Unable to load a new question. Check backend connection.");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Ask a different question";
+        }
+      }
+
+      const COUPON_CATALOG = [
+        { id: "c_massage", title: "15-Min Massage", cost: 50, icon: "💆" },
+        { id: "c_movie", title: "Movie Pick Tonight", cost: 40, icon: "🎬" },
+        { id: "c_coffee", title: "Coffee on Me", cost: 30, icon: "☕" },
+        { id: "c_dishes", title: "Dishes Pass", cost: 60, icon: "🍽️" },
+        { id: "c_snack", title: "Late Night Snack Run", cost: 45, icon: "🍟" },
+      ];
+
+      // Updated defaultState
+      const defaultState = {
+        petName: "Otto",
+        level: 3,
+        currentExp: 120,
+        expToNext: 200,
+        spendableExp: 120, // Dedicated EXP currency for store redemptions
+        tasks: DEFAULT_TASKS,
+        inventory: [], // Redeemed coupons: [{ id, couponId, title, icon, redeemedAt, used: false }]
+        dailyQuestion: {
+          prompt: QUESTION_POOL[0],
+          revealed: false,
+          answers: {
+            p1: { text: "", locked: false },
+            p2: { text: "", locked: false },
+          },
+        },
+      };
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return structuredClone(defaultState);
+          const parsed = JSON.parse(raw);
+          if (!parsed.tasks || !Array.isArray(parsed.tasks))
+            throw new Error("bad shape");
+          // Backfill any keys added in a later version (e.g. dailyQuestion)
+          // so an older saved state doesn't break new panels.
+          return { ...structuredClone(defaultState), ...parsed };
+        } catch (e) {
+          return structuredClone(defaultState);
+        }
+      }
+
+      function saveState() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+
+      function getStage(level) {
+        return (
+          [...STAGES].reverse().find((s) => level >= s.minLevel) || STAGES[0]
+        );
+      }
+
+      let state = loadState();
+
+      function addExp(amount) {
+        state.currentExp += amount;
+        let leveledUp = false;
+
+        while (state.currentExp >= state.expToNext) {
+          state.currentExp -= state.expToNext;
+          state.level += 1;
+          state.expToNext = Math.round(state.expToNext * 1.15);
+          leveledUp = true;
+        }
+
+        saveState();
+        render();
+        if (leveledUp) showLevelUpToast();
+      }
+
+      function toggleTask(taskId) {
+        const task = state.tasks.find((t) => t.id === taskId);
+        if (!task) return;
+
+        task.done = !task.done;
+        addExp(task.done ? task.exp : -task.exp);
+      }
+
+      function showLevelUpToast() {
+        const toast = document.getElementById("level-up-toast");
+        toast.textContent = `Level up! Lv. ${state.level}`;
+        toast.classList.add("show");
+        window.setTimeout(() => toast.classList.remove("show"), 1800);
+      }
+
+      function renderPet() {
+        const stage = getStage(state.level);
+        document.getElementById("pet-emoji").textContent = stage.emoji;
+        document.getElementById("pet-stage-name").textContent = stage.name;
+        document.getElementById("pet-name").textContent = state.petName;
+        document.getElementById("level-badge").textContent =
+          `Lv. ${state.level}`;
+      }
+
+      function renderExpBar() {
+        document.getElementById("exp-current").textContent = state.currentExp;
+        document.getElementById("exp-max").textContent = state.expToNext;
+        const pct = Math.min(
+          100,
+          Math.round((state.currentExp / state.expToNext) * 100),
+        );
+        document.getElementById("exp-bar").style.width = `${pct}%`;
+      }
+
+      function renderTasks() {
+        const list = document.getElementById("task-list");
+        list.innerHTML = "";
+
+        state.tasks.forEach((task) => {
+          const row = document.createElement("button");
+          row.className = `task-row flex items-center justify-between bg-surface rounded-2xl px-4 py-3 w-full text-left ${task.done ? "done" : ""}`;
+          row.setAttribute("data-task-id", task.id);
+          row.innerHTML = `
+          <span class="flex items-center gap-3">
+            <span class="w-5 h-5 rounded-full border border-ocean/40 flex items-center justify-center text-xs ${task.done ? "bg-ocean border-ocean" : ""}">
+              ${task.done ? "✓" : ""}
+            </span>
+            <span class="text-sm">${task.label}</span>
+          </span>
+          <span class="task-exp font-display text-sm text-muted">+${task.exp}</span>
+        `;
+          row.addEventListener("click", () => toggleTask(task.id));
+          list.appendChild(row);
+        });
+
+        const doneCount = state.tasks.filter((t) => t.done).length;
+        document.getElementById("stat-tasks-done").textContent =
+          `${doneCount} / ${state.tasks.length}`;
+      }
+
+      function lockAnswer(slot) {
+        const q = state.dailyQuestion;
+        const textarea = document.querySelector(
+          `[data-answer-input="${slot}"]`,
+        );
+        const value = textarea.value.trim();
+        if (!value) return;
+
+        q.answers[slot].text = value;
+        q.answers[slot].locked = true;
+        saveState();
+        renderQuestion();
+      }
+
+      function revealAnswers() {
+        const q = state.dailyQuestion;
+        if (!q.answers.p1.locked || !q.answers.p2.locked) return;
+        q.revealed = true;
+        saveState();
+        renderQuestion();
+      }
+
+      function newQuestion() {
+        const q = state.dailyQuestion;
+        const pool = QUESTION_POOL.filter((p) => p !== q.prompt);
+        q.prompt =
+          pool[Math.floor(Math.random() * pool.length)] || QUESTION_POOL[0];
+        q.revealed = false;
+        q.answers.p1 = { text: "", locked: false };
+        q.answers.p2 = { text: "", locked: false };
+        saveState();
+        renderQuestion();
+      }
+
+      function answerCardHTML(slot, label, answer, revealed) {
+        if (revealed) {
+          return `
+          <div class="bg-surface rounded-2xl px-4 py-3 reveal-fade">
+            <span class="block text-muted text-xs mb-1">${label}</span>
+            <p class="text-sm">${answer.text}</p>
+          </div>
+        `;
+        }
+
+        if (answer.locked) {
+          return `
+          <div class="bg-surface rounded-2xl px-4 py-3 flex items-center justify-between">
+            <span class="text-muted text-xs">${label}</span>
+            <span class="locked-face text-xs text-ocean">Answer locked 🔒</span>
+          </div>
+        `;
+        }
+
+        return `
+        <div class="bg-surface rounded-2xl px-4 py-3">
+          <span class="block text-muted text-xs mb-2">${label}</span>
+          <textarea data-answer-input="${slot}" rows="2" placeholder="Type your answer, then lock it in…"
+            class="answer-textarea w-full rounded-xl px-3 py-2 text-sm text-text placeholder:text-muted resize-none"></textarea>
+          <button data-lock-btn="${slot}" class="mt-2 text-xs font-medium text-ocean">Lock in answer</button>
+        </div>
+      `;
+      }
+
+      function renderQuestion() {
+        const q = state.dailyQuestion;
+        document.getElementById("question-prompt").textContent = q.prompt;
+
+        const container = document.getElementById("answer-cards");
+        container.innerHTML =
+          answerCardHTML("p1", "Partner 1", q.answers.p1, q.revealed) +
+          answerCardHTML("p2", "Partner 2", q.answers.p2, q.revealed);
+
+        container.querySelectorAll("[data-lock-btn]").forEach((btn) => {
+          btn.addEventListener("click", () =>
+            lockAnswer(btn.getAttribute("data-lock-btn")),
+          );
+        });
+
+        const bothLocked = q.answers.p1.locked && q.answers.p2.locked;
+        const revealBtn = document.getElementById("reveal-btn");
+        revealBtn.disabled = !bothLocked || q.revealed;
+        revealBtn.textContent = q.revealed ? "Revealed" : "Reveal answers";
+
+        document
+          .getElementById("new-question-btn")
+          .classList.toggle("hidden", !q.revealed);
+      }
+
+      document
+        .getElementById("reveal-btn")
+        .addEventListener("click", revealAnswers);
+      document
+        .getElementById("new-question-btn")
+        .addEventListener("click", newQuestion);
+
+      function render() {
+        renderPet();
+        renderExpBar();
+        renderTasks();
+        renderQuestion();
+      }
+
+      // Tab switching
+      document.querySelectorAll(".nav-item").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".nav-item").forEach((b) => {
+            b.classList.remove("active");
+            b.querySelector(".nav-icon").classList.replace(
+              "text-ocean",
+              "text-muted",
+            );
+            b.querySelector(".nav-label").classList.replace(
+              "text-text",
+              "text-muted",
+            );
+          });
+          btn.classList.add("active");
+          btn
+            .querySelector(".nav-icon")
+            .classList.replace("text-muted", "text-ocean");
+          btn
+            .querySelector(".nav-label")
+            .classList.replace("text-muted", "text-text");
+
+          const tab = btn.getAttribute("data-tab");
+          document
+            .querySelectorAll(".panel")
+            .forEach((p) => p.classList.remove("active"));
+          document.getElementById(`panel-${tab}`).classList.add("active");
+        });
+      });
+
+      // Ensure state backfill for older local saves
+      if (state.spendableExp === undefined)
+        state.spendableExp = state.currentExp;
+      if (!state.inventory) state.inventory = [];
+
+      // Award spendable EXP alongside normal progression
+      const originalAddExp = addExp;
+      function addExp(amount) {
+        if (amount > 0) {
+          state.spendableExp = (state.spendableExp || 0) + amount;
+        }
+        originalAddExp(amount);
+      }
+
+      function buyCoupon(couponId) {
+        const item = COUPON_CATALOG.find((c) => c.id === couponId);
+        if (!item || state.spendableExp < item.cost) return;
+
+        state.spendableExp -= item.cost;
+        state.inventory.unshift({
+          instanceId: "inst_" + Date.now(),
+          couponId: item.id,
+          title: item.title,
+          icon: item.icon,
+          redeemedAt: new Date().toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          }),
+          used: false,
+        });
+
+        saveState();
+        renderRewards();
+        triggerPetReaction("BONE"); // Visual feedback
+      }
+
+      function useCoupon(instanceId) {
+        const item = state.inventory.find((i) => i.instanceId === instanceId);
+        if (!item) return;
+
+        item.used = true;
+        saveState();
+        renderRewards();
+        triggerPetReaction("HEART");
+      }
+
+      function triggerPetReaction(type) {
+        const toast = document.getElementById("level-up-toast");
+        toast.textContent =
+          type === "BONE" ? "🦴 Coupon Bought!" : "💖 Coupon Redeemed!";
+        toast.classList.add("show");
+        window.setTimeout(() => toast.classList.remove("show"), 1500);
+      }
+
+      function renderRewards() {
+        document.getElementById("spendable-exp-val").textContent =
+          state.spendableExp || 0;
+
+        // Render Catalog
+        const catalogList = document.getElementById("coupon-catalog-list");
+        catalogList.innerHTML = "";
+
+        COUPON_CATALOG.forEach((coupon) => {
+          const canAfford = (state.spendableExp || 0) >= coupon.cost;
+          const itemEl = document.createElement("div");
+          itemEl.className =
+            "bg-surface rounded-2xl px-4 py-3 flex items-center justify-between border border-white/5";
+          itemEl.innerHTML = `
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">${coupon.icon}</span>
+        <div>
+          <span class="text-sm font-medium block">${coupon.title}</span>
+          <span class="text-xs text-muted">${coupon.cost} EXP</span>
+        </div>
+      </div>
+      <button 
+        data-buy-id="${coupon.id}"
+        class="text-xs font-display font-600 px-3 py-1.5 rounded-xl border transition ${
+          canAfford
+            ? "bg-ocean-deep border-ocean text-text hover:bg-ocean"
+            : "border-slate-700 text-muted opacity-40 cursor-not-allowed"
+        }"
+        ${!canAfford ? "disabled" : ""}>
+        Claim
+      </button>
+    `;
+          itemEl
+            .querySelector("[data-buy-id]")
+            ?.addEventListener("click", () => buyCoupon(coupon.id));
+          catalogList.appendChild(itemEl);
+        });
+
+        // Render Active Inventory
+        const inventoryList = document.getElementById("inventory-list");
+        const activeItems = state.inventory.filter((i) => !i.used);
+        document.getElementById("inventory-count").textContent =
+          `${activeItems.length} active`;
+        inventoryList.innerHTML = "";
+
+        if (activeItems.length === 0) {
+          inventoryList.innerHTML = `
+      <div class="bg-surface/50 rounded-2xl p-6 text-center border border-dashed border-slate-800">
+        <p class="text-xs text-muted">No claimed coupons yet. Earn EXP by completing tasks!</p>
+      </div>
+    `;
+          return;
+        }
+
+        activeItems.forEach((item) => {
+          const card = document.createElement("div");
+          card.className =
+            "bg-surface-alt rounded-2xl px-4 py-3 flex items-center justify-between border border-ocean/30";
+          card.innerHTML = `
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">${item.icon}</span>
+        <div>
+          <span class="text-sm font-medium block">${item.title}</span>
+          <span class="text-[11px] text-muted">Claimed ${item.redeemedAt}</span>
+        </div>
+      </div>
+      <button 
+        data-use-id="${item.instanceId}"
+        class="text-xs font-display font-600 bg-emerald-600/80 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-xl transition">
+        Use Now
+      </button>
+    `;
+          card
+            .querySelector("[data-use-id]")
+            .addEventListener("click", () => useCoupon(item.instanceId));
+          inventoryList.appendChild(card);
+        });
+
+        // Keep quick stat updated
+        const statSaved = document
+          .getElementById("stat-tasks-done")
+          .parentElement.nextElementSibling.querySelector("span:last-child");
+        if (statSaved) statSaved.textContent = activeItems.length;
+      }
+
+      // Hook renderRewards into master render()
+      const baseRender = render;
+      render = function () {
+        baseRender();
+        renderRewards();
+      };
+
+      render();
+    </script>
+  </body>
+</html>

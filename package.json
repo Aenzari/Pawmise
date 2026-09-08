@@ -1,0 +1,28 @@
+{
+  "name": "pawmise",
+  "version": "1.0.0",
+  "description": "A private, co-op relationship companion app designed to turn everyday connection into a shared adventure. Built exclusively for two, it lets a couple nurture and level up a virtual pet together by completing real-world tasks, keeping shared streaks alive, and answering daily AI-powered reflection prompts through a fun blind reveal interface.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Aenzari/Pawmise.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Aenzari/Pawmise/issues"
+  },
+  "homepage": "https://github.com/Aenzari/Pawmise#readme",
+  "dependencies": {
+    "@google/genai": "^2.21.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongoose": "^9.9.5"
+  }
+}
