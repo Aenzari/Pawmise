@@ -9,6 +9,7 @@
     <title>Pawmise 042126</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"
@@ -155,7 +156,7 @@
           id="level-badge"
           class="absolute top-4 left-4 bg-surface/80 backdrop-blur-sm text-xs font-medium text-muted px-3 py-1 rounded-full"
         >
-          Lv. 3
+          Lv. 1
         </span>
 
         <!-- Level-up toast -->
@@ -166,13 +167,21 @@
           Level up!
         </div>
 
-        <!-- Pet placeholder -->
+        <!-- 3D Pet Habitat Canvas Container -->
         <div
-          id="pet-placeholder"
-          class="w-32 h-32 rounded-full bg-surface-alt border border-ocean/30 flex flex-col items-center justify-center"
+          id="pet-3d-canvas"
+          class="w-full h-full absolute inset-0 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+        ></div>
+
+        <!-- Floating Stage Tag over 3D Canvas -->
+        <div
+          class="absolute bottom-3 bg-surface/80 backdrop-blur px-3 py-1 rounded-full border border-white/5 pointer-events-none"
         >
-          <span id="pet-emoji" class="text-5xl leading-none">🥚</span>
-          <span id="pet-stage-name" class="text-muted text-xs mt-1">Egg</span>
+          <span
+            id="pet-stage-name"
+            class="text-ocean text-xs font-display font-600"
+            >Newborn Pup</span
+          >
         </div>
       </section>
 
@@ -396,15 +405,14 @@
     </nav>
 
     <script>
-      const STORAGE_KEY = "petAppState_v2";
+      const STORAGE_KEY = "petAppState_v3";
 
       // Evolution stages by level threshold. Backend will own the source of
       // truth for this in Phase 4; this table is duplicated there.
       const STAGES = [
-        { minLevel: 1, name: "Newborn Pup", emoji: "🐾" },
-        { minLevel: 3, name: "Playful Pup", emoji: "🐶" },
-        { minLevel: 6, name: "Active Dog", emoji: "🐕" },
-        { minLevel: 10, name: "Loyal Hound", emoji: "🦮" },
+        { minLevel: 1, name: "Teacup Pup", stageId: 1 },
+        { minLevel: 6, name: "Playful Pup", stageId: 2 },
+        { minLevel: 15, name: "Full-Grown Dog", stageId: 3 },
       ];
 
       const DEFAULT_TASKS = [
@@ -465,6 +473,7 @@
         catalog: COUPON_CATALOG,
         inventory: [],
         usageDates: [],
+        lastActiveDate: "",
         dailyQuestion: {
           prompt: "",
           revealed: false,
@@ -491,6 +500,7 @@
             usageDates: Array.isArray(parsed.usageDates)
               ? parsed.usageDates
               : [],
+            lastActiveDate: parsed.lastActiveDate || "",
           };
         } catch (e) {
           return structuredClone(defaultState);
@@ -508,14 +518,21 @@
       }
 
       let state = loadState();
+      let dailyRefreshTimer;
 
-      function registerUsage() {
-        const today = new Date().toISOString().slice(0, 10);
+      function getLocalDateKey(date = new Date()) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function registerUsage(today) {
         if (!state.usageDates.includes(today)) state.usageDates.push(today);
 
         let streak = 0;
         const cursor = new Date(`${today}T00:00:00`);
-        while (state.usageDates.includes(cursor.toISOString().slice(0, 10))) {
+        while (state.usageDates.includes(getLocalDateKey(cursor))) {
           streak += 1;
           cursor.setDate(cursor.getDate() - 1);
         }
@@ -524,6 +541,42 @@
           `Day ${state.usageDates.length}`;
         document.getElementById("streak-value").textContent = streak;
         saveState();
+      }
+
+      async function refreshDailyCycle() {
+        const today = getLocalDateKey();
+        const isNewDay = state.lastActiveDate && state.lastActiveDate !== today;
+
+        if (isNewDay) {
+          state.tasks.forEach((task) => {
+            task.done = false;
+          });
+          state.dailyQuestion = {
+            prompt: "",
+            revealed: false,
+            answers: {
+              p1: { text: "", locked: false },
+              p2: { text: "", locked: false },
+            },
+          };
+        }
+
+        state.lastActiveDate = today;
+        registerUsage(today);
+        render();
+
+        if (isNewDay || !state.dailyQuestion.prompt) await newQuestion();
+        scheduleDailyRefresh();
+      }
+
+      function scheduleDailyRefresh() {
+        window.clearTimeout(dailyRefreshTimer);
+        const nextMidnight = new Date();
+        nextMidnight.setHours(24, 0, 0, 1000);
+        dailyRefreshTimer = window.setTimeout(
+          () => refreshDailyCycle(),
+          nextMidnight.getTime() - Date.now(),
+        );
       }
 
       function addExp(amount) {
@@ -561,11 +614,22 @@
 
       function renderPet() {
         const stage = getStage(state.level);
-        document.getElementById("pet-emoji").textContent = stage.emoji;
         document.getElementById("pet-stage-name").textContent = stage.name;
         document.getElementById("pet-name").textContent = state.petName;
         document.getElementById("level-badge").textContent =
           `Lv. ${state.level}`;
+
+        // Check if we need to rebuild the model for a major evolution stage
+        const expectedStage = state.level >= 15 ? 3 : state.level >= 6 ? 2 : 1;
+        if (currentRenderedStage !== expectedStage) {
+          buildShihTzu(state.level);
+        }
+
+        // Smooth micro-growth for levels within the same stage
+        if (dogGroup) {
+          const microScale = 1.0 + (state.level % 5) * 0.02;
+          dogGroup.scale.set(microScale, microScale, microScale);
+        }
       }
 
       function renderExpBar() {
@@ -630,8 +694,8 @@
         if (revealed) {
           return `
           <div class="bg-surface rounded-2xl px-4 py-3 reveal-fade">
-            <span class="block text-muted text-xs mb-1">${label}</span>
-            <p class="text-sm">${answer.text}</p>
+            <span class="block text-muted text-xs mb-1">${escapeHTML(label)}</span>
+            <p class="text-sm">${escapeHTML(answer.text)}</p>
           </div>
         `;
         }
@@ -647,7 +711,7 @@
 
         return `
         <div class="bg-surface rounded-2xl px-4 py-3">
-          <span class="block text-muted text-xs mb-2">${label}</span>
+            <span class="block text-muted text-xs mb-2">${escapeHTML(label)}</span>
           <textarea data-answer-input="${slot}" rows="2" placeholder="Type your answer, then lock it in…"
             class="answer-textarea w-full rounded-xl px-3 py-2 text-sm text-text placeholder:text-muted resize-none"></textarea>
           <button data-lock-btn="${slot}" class="mt-2 text-xs font-medium text-ocean">Lock in answer</button>
@@ -916,9 +980,301 @@
         renderRewards();
       };
 
-      registerUsage();
-      render();
-      if (!state.dailyQuestion.prompt) newQuestion();
+      // --- Three.js Dynamic Shih Tzu Setup ---
+      const canvasContainer = document.getElementById("pet-3d-canvas");
+      let scene, camera, renderer, dogGroup, dogHead, dogTail;
+      let currentRenderedStage = null;
+      let isDragging = false,
+        previousX = 0;
+
+      function init3DPet() {
+        const width = canvasContainer.clientWidth;
+        const height = canvasContainer.clientHeight;
+
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+        camera.position.set(0, 1.2, 4.4);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        canvasContainer.appendChild(renderer.domElement);
+
+        // Soft Lighting
+        const ambient = new THREE.AmbientLight(0xffffff, 0.85);
+        scene.add(ambient);
+
+        const keyLight = new THREE.DirectionalLight(0xbae0fd, 1.2);
+        keyLight.position.set(4, 6, 4);
+        scene.add(keyLight);
+
+        const fillLight = new THREE.DirectionalLight(0xffedd5, 0.5);
+        fillLight.position.set(-4, 3, -2);
+        scene.add(fillLight);
+
+        // Build the initial model based on state
+        buildShihTzu(state.level);
+
+        // Drag-to-Rotate Events
+        const onPointerDown = (e) => {
+          isDragging = true;
+          previousX = e.clientX || (e.touches && e.touches[0].clientX);
+        };
+        const onPointerMove = (e) => {
+          if (!isDragging) return;
+          const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+          const delta = clientX - previousX;
+          if (dogGroup) dogGroup.rotation.y += delta * 0.012;
+          previousX = clientX;
+        };
+        const onPointerUp = () => {
+          isDragging = false;
+        };
+
+        canvasContainer.addEventListener("mousedown", onPointerDown);
+        window.addEventListener("mousemove", onPointerMove);
+        window.addEventListener("mouseup", onPointerUp);
+
+        canvasContainer.addEventListener("touchstart", onPointerDown, {
+          passive: true,
+        });
+        window.addEventListener("touchmove", onPointerMove, { passive: true });
+        window.addEventListener("touchend", onPointerUp);
+
+        window.addEventListener("resize", () => {
+          if (!canvasContainer) return;
+          const w = canvasContainer.clientWidth;
+          const h = canvasContainer.clientHeight;
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+          renderer.setSize(w, h);
+        });
+
+        animate3DPet();
+      }
+
+      function buildShihTzu(level) {
+        const isBaby = level < 6; // Lv 1 - 5
+        const isTeen = level >= 6 && level < 15; // Lv 6 - 14
+        const isAdult = level >= 15; // Lv 15+
+
+        const newStage = isAdult ? 3 : isTeen ? 2 : 1;
+        currentRenderedStage = newStage;
+
+        if (dogGroup) scene.remove(dogGroup);
+        dogGroup = new THREE.Group();
+
+        // Materials
+        const creamMat = new THREE.MeshLambertMaterial({ color: 0xfbf8f1 });
+        const patchMat = new THREE.MeshLambertMaterial({ color: 0x4a3b32 }); // Dark brown spots
+        const noseMat = new THREE.MeshBasicMaterial({ color: 0x111827 });
+        const tongueMat = new THREE.MeshLambertMaterial({ color: 0xf472b6 });
+        const bandMat = new THREE.MeshLambertMaterial({ color: 0x38bdf8 }); // Ocean blue band
+
+        // 1. Torso (Smaller stubby body for baby, longer for adult)
+        const bodyRadius = isBaby ? 0.5 : isTeen ? 0.65 : 0.78;
+        const bodyGeo = new THREE.SphereGeometry(bodyRadius, 16, 16);
+        const body = new THREE.Mesh(bodyGeo, creamMat);
+        body.scale.set(1.0, isBaby ? 0.9 : 0.85, isBaby ? 1.05 : 1.3);
+        body.position.set(0, isBaby ? 0.25 : 0.35, 0);
+        dogGroup.add(body);
+
+        // Spot patch on back
+        const patchGeo = new THREE.SphereGeometry(bodyRadius * 0.55, 12, 12);
+        const backPatch = new THREE.Mesh(patchGeo, patchMat);
+        backPatch.scale.set(1.1, 0.6, 1.1);
+        backPatch.position.set(0.1, body.position.y + bodyRadius * 0.45, -0.1);
+        dogGroup.add(backPatch);
+
+        // 2. Head Group
+        dogHead = new THREE.Group();
+        const headY = isBaby ? 0.85 : isTeen ? 1.05 : 1.15;
+        dogHead.position.set(0, headY, isBaby ? 0.2 : 0.35);
+
+        // Baby has larger head relative to body (bobble-head effect)
+        const headRadius = isBaby ? 0.48 : isTeen ? 0.54 : 0.6;
+        const headGeo = new THREE.SphereGeometry(headRadius, 16, 16);
+        const head = new THREE.Mesh(headGeo, creamMat);
+        dogHead.add(head);
+
+        // Shih Tzu Snout Beard / Mustache Tuft
+        if (!isBaby) {
+          const beardGeo = new THREE.ConeGeometry(
+            0.18,
+            isAdult ? 0.38 : 0.25,
+            8,
+          );
+          const beard = new THREE.Mesh(beardGeo, creamMat);
+          beard.rotation.x = 0.3;
+          beard.position.set(0, -0.2, headRadius * 0.9);
+          dogHead.add(beard);
+        }
+
+        // Eye Patches & Eyes
+        const patchScale = isBaby ? 0.18 : 0.23;
+        const eyePatchGeo = new THREE.SphereGeometry(patchScale, 12, 12);
+        const leftPatch = new THREE.Mesh(eyePatchGeo, patchMat);
+        leftPatch.scale.set(0.8, 1, 0.4);
+        leftPatch.position.set(-headRadius * 0.42, 0.08, headRadius * 0.78);
+        const rightPatch = leftPatch.clone();
+        rightPatch.position.x = headRadius * 0.42;
+        dogHead.add(leftPatch);
+        dogHead.add(rightPatch);
+
+        const eyeGeo = new THREE.SphereGeometry(0.062, 8, 8);
+        const leftEye = new THREE.Mesh(eyeGeo, noseMat);
+        leftEye.position.set(-headRadius * 0.4, 0.08, headRadius * 0.94);
+        const rightEye = leftEye.clone();
+        rightEye.position.x = headRadius * 0.4;
+        dogHead.add(leftEye);
+        dogHead.add(rightEye);
+
+        // Snout & Button Nose
+        const snoutGeo = new THREE.SphereGeometry(isBaby ? 0.14 : 0.18, 12, 12);
+        const snout = new THREE.Mesh(snoutGeo, creamMat);
+        snout.scale.set(1.2, 0.8, 1.0);
+        snout.position.set(0, -0.05, headRadius * 0.95);
+        dogHead.add(snout);
+
+        const noseGeo = new THREE.SphereGeometry(0.05, 8, 8);
+        const nose = new THREE.Mesh(noseGeo, noseMat);
+        nose.position.set(0, 0.02, headRadius * 1.15);
+        dogHead.add(nose);
+
+        // Tongue
+        const tongueGeo = new THREE.BoxGeometry(0.06, 0.07, 0.02);
+        const tongue = new THREE.Mesh(tongueGeo, tongueMat);
+        tongue.position.set(0, -0.12, headRadius * 1.05);
+        tongue.rotation.x = 0.2;
+        dogHead.add(tongue);
+
+        // Ears: Baby has short floppy ears, Teen/Adult have long flowy ears
+        const earLength = isBaby ? 0.42 : isTeen ? 0.65 : 0.85;
+        const earGeo = new THREE.CylinderGeometry(0.12, 0.2, earLength, 10);
+        const leftEar = new THREE.Mesh(earGeo, patchMat);
+        leftEar.position.set(-headRadius * 0.9, -0.05, 0);
+        leftEar.rotation.z = -0.22;
+        const rightEar = new THREE.Mesh(earGeo, patchMat);
+        rightEar.position.set(headRadius * 0.9, -0.05, 0);
+        rightEar.rotation.z = 0.22;
+        dogHead.add(leftEar);
+        dogHead.add(rightEar);
+
+        // Cheek Fur Tufts (Only grows out on Teen & Adult stages)
+        if (!isBaby) {
+          const cheekScale = isAdult ? 0.65 : 0.45;
+          const cheekGeo = new THREE.ConeGeometry(0.24, cheekScale, 8);
+          const leftCheek = new THREE.Mesh(cheekGeo, creamMat);
+          leftCheek.rotation.z = 1.1;
+          leftCheek.position.set(-headRadius * 0.85, -0.15, 0.2);
+          const rightCheek = new THREE.Mesh(cheekGeo, creamMat);
+          rightCheek.rotation.z = -1.1;
+          rightCheek.position.set(headRadius * 0.85, -0.15, 0.2);
+          dogHead.add(leftCheek);
+          dogHead.add(rightCheek);
+        }
+
+        // Topknot Bun (Appears at Level 6, fully styled at Level 15)
+        if (!isBaby) {
+          const hairTieGeo = new THREE.TorusGeometry(0.08, 0.03, 8, 16);
+          const hairTie = new THREE.Mesh(hairTieGeo, bandMat);
+          hairTie.rotation.x = Math.PI / 2;
+          hairTie.position.set(0, headRadius * 0.98, 0.05);
+          dogHead.add(hairTie);
+
+          const knotSize = isAdult ? 0.17 : 0.12;
+          const topknotGeo = new THREE.SphereGeometry(knotSize, 10, 10);
+          const topknot = new THREE.Mesh(topknotGeo, creamMat);
+          topknot.scale.set(0.9, 1.2, 0.8);
+          topknot.position.set(0, headRadius * 1.15, 0.05);
+          dogHead.add(topknot);
+        }
+
+        dogGroup.add(dogHead);
+
+        // 3. Tail: Baby has a short wagging tail, Adult has full curled plume
+        dogTail = new THREE.Group();
+        dogTail.position.set(0, body.position.y + 0.2, -bodyRadius * 0.9);
+
+        if (isBaby) {
+          const babyTailGeo = new THREE.CylinderGeometry(0.04, 0.07, 0.35, 8);
+          const bTail = new THREE.Mesh(babyTailGeo, patchMat);
+          bTail.rotation.x = -Math.PI / 3;
+          dogTail.add(bTail);
+        } else {
+          const tailTorusGeo = new THREE.TorusGeometry(
+            0.26,
+            0.07,
+            8,
+            16,
+            Math.PI * 1.1,
+          );
+          const plume = new THREE.Mesh(tailTorusGeo, patchMat);
+          plume.rotation.y = Math.PI / 2;
+          plume.rotation.z = 0.3;
+          dogTail.add(plume);
+
+          const fluffGeo = new THREE.SphereGeometry(0.14, 8, 8);
+          const fluff = new THREE.Mesh(fluffGeo, creamMat);
+          fluff.position.set(0, 0.25, 0.12);
+          dogTail.add(fluff);
+        }
+        dogGroup.add(dogTail);
+
+        // 4. Paws
+        const pawHeight = isBaby ? 0.22 : 0.35;
+        const pawGeo = new THREE.CylinderGeometry(0.11, 0.14, pawHeight, 10);
+        const flPaw = new THREE.Mesh(pawGeo, creamMat);
+        flPaw.position.set(
+          -bodyRadius * 0.45,
+          -bodyRadius * 0.4,
+          bodyRadius * 0.45,
+        );
+        const frPaw = flPaw.clone();
+        frPaw.position.x = bodyRadius * 0.45;
+        const blPaw = flPaw.clone();
+        blPaw.position.set(
+          -bodyRadius * 0.45,
+          -bodyRadius * 0.4,
+          -bodyRadius * 0.45,
+        );
+        const brPaw = flPaw.clone();
+        brPaw.position.x = bodyRadius * 0.45;
+
+        dogGroup.add(flPaw);
+        dogGroup.add(frPaw);
+        dogGroup.add(blPaw);
+        dogGroup.add(brPaw);
+
+        scene.add(dogGroup);
+      }
+
+      // Animation loop
+      const clock = new THREE.Clock();
+      function animate3DPet() {
+        requestAnimationFrame(animate3DPet);
+        const elapsed = clock.getElapsedTime();
+
+        if (dogGroup && dogHead && dogTail) {
+          // Puppies wag faster than adult dogs
+          const wagSpeed = state.level < 6 ? 11.0 : 7.5;
+          dogGroup.position.y = Math.sin(elapsed * 2.4) * 0.04;
+          dogHead.rotation.z = Math.sin(elapsed * 1.6) * 0.03;
+          dogTail.rotation.x = Math.sin(elapsed * wagSpeed) * 0.25;
+
+          if (!isDragging) {
+            dogGroup.rotation.y = Math.sin(elapsed * 0.5) * 0.15;
+          }
+        }
+
+        renderer.render(scene, camera);
+      }
+
+      // Initialize the scene before rendering state-dependent pet updates.
+      window.addEventListener("DOMContentLoaded", () => {
+        init3DPet();
+        refreshDailyCycle();
+      });
     </script>
   </body>
 </html>
