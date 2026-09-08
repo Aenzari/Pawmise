@@ -8,6 +8,27 @@ const PetState = require("./models/PetState");
 const app = express();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+const FALLBACK_QUESTIONS = {
+  funny: ["What is the funniest little habit of mine that you secretly love?"],
+  "deep/serious": [
+    "What is something you hope we keep choosing for each other as life changes?",
+  ],
+  romantic: ["What is a small, subtle thing I do that makes you feel loved?"],
+  intellectual: [
+    "What idea or question have you been curious to explore together lately?",
+  ],
+  "everyday life": [
+    "What ordinary part of our day would you most like us to make more special?",
+  ],
+  balanced: [
+    "What is one small thing we could do this week to feel more connected?",
+  ],
+};
+
+function getFallbackQuestion(category) {
+  const questions = FALLBACK_QUESTIONS[category] || FALLBACK_QUESTIONS.balanced;
+  return questions[Math.floor(Math.random() * questions.length)];
+}
 
 // Middleware
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || "*" }));
@@ -78,13 +99,22 @@ Rules:
 - Do not include greetings, introductions, quotation marks, or explanations.
 - Make it specific, emotional, and easy to reflect on.`;
 
-    const response = await ai.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: prompt,
-    });
+    let questionText;
+    try {
+      const response = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: prompt,
+      });
 
-    const questionText = response.text?.trim().replace(/^["']|["']$/g, "");
-    if (!questionText) throw new Error("Gemini returned an empty question");
+      questionText = response.text?.trim().replace(/^["']|["']$/g, "");
+      if (!questionText) throw new Error("Gemini returned an empty question");
+    } catch (err) {
+      console.warn(
+        "Gemini question generation failed; using fallback:",
+        err.message,
+      );
+      questionText = getFallbackQuestion(category);
+    }
 
     // Update state directly with the new prompt and reset submission locks
     const state = await getOrCreateState();
