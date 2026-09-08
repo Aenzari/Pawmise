@@ -174,7 +174,7 @@
       <!-- EXP row -->
       <section class="mt-5">
         <div class="flex items-baseline justify-between mb-2">
-          <span id="pet-name" class="font-display font-600 text-lg">Otto</span>
+          <span id="pet-name" class="font-display font-600 text-lg">Aaron</span>
           <span class="font-display text-sm text-muted">
             <span id="exp-current">0</span> / <span id="exp-max">0</span> EXP
           </span>
@@ -370,9 +370,12 @@
         { id: "c_snack", title: "Late Night Snack Run", cost: 45, icon: "🍟" },
       ];
 
+      const DEFAULT_QUESTION =
+        "What is your favorite memory of us from this past month?";
+
       // Updated defaultState
       const defaultState = {
-        petName: "Otto",
+        petName: "Aaron",
         level: 3,
         currentExp: 120,
         expToNext: 200,
@@ -380,7 +383,7 @@
         tasks: DEFAULT_TASKS,
         inventory: [], // Redeemed coupons: [{ id, couponId, title, icon, redeemedAt, used: false }]
         dailyQuestion: {
-          prompt: QUESTION_POOL[0],
+          prompt: DEFAULT_QUESTION,
           revealed: false,
           answers: {
             p1: { text: "", locked: false },
@@ -510,18 +513,6 @@
         const q = state.dailyQuestion;
         if (!q.answers.p1.locked || !q.answers.p2.locked) return;
         q.revealed = true;
-        saveState();
-        renderQuestion();
-      }
-
-      function newQuestion() {
-        const q = state.dailyQuestion;
-        const pool = QUESTION_POOL.filter((p) => p !== q.prompt);
-        q.prompt =
-          pool[Math.floor(Math.random() * pool.length)] || QUESTION_POOL[0];
-        q.revealed = false;
-        q.answers.p1 = { text: "", locked: false };
-        q.answers.p2 = { text: "", locked: false };
         saveState();
         renderQuestion();
       }
