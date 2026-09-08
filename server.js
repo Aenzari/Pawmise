@@ -7,6 +7,7 @@ const PetState = require("./models/PetState");
 
 const app = express();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 
 // Middleware
 app.use(cors({ origin: process.env.CLIENT_ORIGIN || "*" }));
@@ -78,11 +79,12 @@ Rules:
 - Make it specific, emotional, and easy to reflect on.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: GEMINI_MODEL,
       contents: prompt,
     });
 
-    const questionText = response.text.trim().replace(/^["']|["']$/g, "");
+    const questionText = response.text?.trim().replace(/^["']|["']$/g, "");
+    if (!questionText) throw new Error("Gemini returned an empty question");
 
     // Update state directly with the new prompt and reset submission locks
     const state = await getOrCreateState();
