@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
     />
-    <title>Us — Pet Dashboard</title>
+    <title>Pawmise 042126</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -20,13 +20,13 @@
         theme: {
           extend: {
             colors: {
-              bg: "#0B1626",
-              surface: "#14243B",
-              "surface-alt": "#1C3350",
-              ocean: "#3FA9E0",
-              "ocean-deep": "#1E6FA8",
-              text: "#E8F1FB",
-              muted: "#7E97B5",
+              bg: "#EAF7FF",
+              surface: "#FFFFFF",
+              "surface-alt": "#D7F0FF",
+              ocean: "#4CAFE5",
+              "ocean-deep": "#277EBA",
+              text: "#17324D",
+              muted: "#66839C",
             },
             fontFamily: {
               display: ['"Baloo 2"', "sans-serif"],
@@ -40,18 +40,21 @@
     <style>
       body {
         -webkit-tap-highlight-color: transparent;
+        background:
+          radial-gradient(circle at 15% 0%, #ffffff 0, transparent 34%),
+          linear-gradient(180deg, #eaf7ff 0%, #d9f0ff 100%);
       }
       .habitat-glow {
         background:
           radial-gradient(
             circle at 50% 30%,
-            rgba(63, 169, 224, 0.35),
+            rgba(255, 255, 255, 0.85),
             transparent 60%
           ),
-          linear-gradient(180deg, #16283f 0%, #0f1f33 100%);
+          linear-gradient(180deg, #bfe9ff 0%, #8ed4f4 100%);
       }
       .exp-fill {
-        background: linear-gradient(90deg, #1e6fa8 0%, #3fa9e0 100%);
+        background: linear-gradient(90deg, #277eba 0%, #69c9f4 100%);
       }
       .nav-item.active .nav-icon {
         color: #3fa9e0;
@@ -94,7 +97,7 @@
       }
 
       .answer-textarea {
-        background: #0f1f33;
+        background: #f4fbff;
         border: 1px solid rgba(63, 169, 224, 0.25);
       }
       .answer-textarea:focus {
@@ -129,14 +132,16 @@
     <!-- Status strip -->
     <header class="flex items-center justify-between px-5 pt-5 pb-3">
       <div class="flex flex-col">
-        <span class="text-sm text-muted leading-tight">Us</span>
-        <span class="text-base font-medium leading-tight">Day 14 streak</span>
+        <span class="text-sm text-muted leading-tight">Pawmise</span>
+        <span id="day-label" class="text-base font-medium leading-tight"
+          >Day 1</span
+        >
       </div>
       <div
         class="flex items-center gap-1.5 bg-surface px-3 py-1.5 rounded-full"
       >
         <span class="text-base leading-none">🔥</span>
-        <span class="font-display font-600 text-sm">14</span>
+        <span id="streak-value" class="font-display font-600 text-sm">1</span>
       </div>
     </header>
 
@@ -198,15 +203,66 @@
         </div>
         <div class="bg-surface rounded-2xl px-4 py-3">
           <span class="block text-muted text-xs mb-1">Coupons saved</span>
-          <span class="font-display font-600 text-xl">3</span>
+          <span id="stat-coupons" class="font-display font-600 text-xl">0</span>
         </div>
       </section>
 
       <!-- Tab panels -->
       <section class="mt-6">
         <div id="panel-tasks" class="panel active">
-          <h2 class="font-display font-600 text-base mb-3">Today's tasks</h2>
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-display font-600 text-base">Today's tasks</h2>
+            <button
+              id="add-task-btn"
+              class="text-ocean-deep text-sm font-display font-600"
+              type="button"
+            >
+              + Add task
+            </button>
+          </div>
           <div id="task-list" class="flex flex-col gap-2"></div>
+          <form
+            id="task-form"
+            class="hidden bg-surface rounded-2xl p-4 mt-3 border border-ocean/20"
+          >
+            <label class="block text-xs text-muted mb-1" for="task-label"
+              >Task name</label
+            >
+            <input
+              id="task-label"
+              class="w-full rounded-xl px-3 py-2 text-sm"
+              required
+              maxlength="60"
+              placeholder="Plan a sunset walk"
+            />
+            <label class="block text-xs text-muted mt-3 mb-1" for="task-exp"
+              >EXP reward</label
+            >
+            <input
+              id="task-exp"
+              class="w-full rounded-xl px-3 py-2 text-sm"
+              type="number"
+              min="1"
+              max="100"
+              value="10"
+              required
+            />
+            <div class="flex gap-2 mt-3">
+              <button
+                class="flex-1 bg-ocean-deep text-white rounded-xl py-2 text-sm font-display font-600"
+                type="submit"
+              >
+                Add task
+              </button>
+              <button
+                id="cancel-task-btn"
+                class="px-4 rounded-xl py-2 text-sm text-muted"
+                type="button"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
         </div>
 
         <div id="panel-questions" class="panel">
@@ -256,6 +312,35 @@
             >
               Pawmise Treat Shop
             </h3>
+            <form
+              id="reward-form"
+              class="bg-surface rounded-2xl p-4 mb-3 border border-ocean/20"
+            >
+              <div class="grid grid-cols-[1fr_72px] gap-2">
+                <input
+                  id="reward-title"
+                  class="rounded-xl px-3 py-2 text-sm"
+                  required
+                  maxlength="50"
+                  placeholder="Add a treat"
+                />
+                <input
+                  id="reward-cost"
+                  class="rounded-xl px-3 py-2 text-sm"
+                  type="number"
+                  min="1"
+                  max="999"
+                  required
+                  placeholder="EXP"
+                />
+              </div>
+              <button
+                class="w-full mt-2 bg-ocean-deep text-white rounded-xl py-2 text-sm font-display font-600"
+                type="submit"
+              >
+                Add to shop
+              </button>
+            </form>
             <div id="coupon-catalog-list" class="flex flex-col gap-2.5"></div>
           </div>
 
@@ -311,7 +396,7 @@
     </nav>
 
     <script>
-      const STORAGE_KEY = "petAppState_v1";
+      const STORAGE_KEY = "petAppState_v2";
 
       // Evolution stages by level threshold. Backend will own the source of
       // truth for this in Phase 4; this table is duplicated there.
@@ -329,8 +414,6 @@
         { id: "cook", label: "Cook dinner together", exp: 25, done: false },
       ];
 
-      // Static pool for now — Phase 4 backend replaces this with an AI-generated
-      // question fetched per day.
       const BACKEND_URL = "https://pawmise-3569.onrender.com"; // or local: http://localhost:5000
 
       async function newQuestion() {
@@ -345,6 +428,8 @@
             body: JSON.stringify({ category: "romantic" }),
           });
           const data = await res.json();
+          if (!res.ok || !data.prompt)
+            throw new Error("Question generation failed");
 
           state.dailyQuestion.prompt = data.prompt;
           state.dailyQuestion.revealed = false;
@@ -370,20 +455,18 @@
         { id: "c_snack", title: "Late Night Snack Run", cost: 45, icon: "🍟" },
       ];
 
-      const DEFAULT_QUESTION =
-        "What is your favorite memory of us from this past month?";
-
-      // Updated defaultState
       const defaultState = {
         petName: "Aaron",
-        level: 3,
-        currentExp: 120,
-        expToNext: 200,
-        spendableExp: 120, // Dedicated EXP currency for store redemptions
+        level: 1,
+        currentExp: 0,
+        expToNext: 100,
+        spendableExp: 0,
         tasks: DEFAULT_TASKS,
-        inventory: [], // Redeemed coupons: [{ id, couponId, title, icon, redeemedAt, used: false }]
+        catalog: COUPON_CATALOG,
+        inventory: [],
+        usageDates: [],
         dailyQuestion: {
-          prompt: DEFAULT_QUESTION,
+          prompt: "",
           revealed: false,
           answers: {
             p1: { text: "", locked: false },
@@ -401,7 +484,14 @@
             throw new Error("bad shape");
           // Backfill any keys added in a later version (e.g. dailyQuestion)
           // so an older saved state doesn't break new panels.
-          return { ...structuredClone(defaultState), ...parsed };
+          return {
+            ...structuredClone(defaultState),
+            ...parsed,
+            catalog: parsed.catalog || structuredClone(COUPON_CATALOG),
+            usageDates: Array.isArray(parsed.usageDates)
+              ? parsed.usageDates
+              : [],
+          };
         } catch (e) {
           return structuredClone(defaultState);
         }
@@ -419,8 +509,27 @@
 
       let state = loadState();
 
+      function registerUsage() {
+        const today = new Date().toISOString().slice(0, 10);
+        if (!state.usageDates.includes(today)) state.usageDates.push(today);
+
+        let streak = 0;
+        const cursor = new Date(`${today}T00:00:00`);
+        while (state.usageDates.includes(cursor.toISOString().slice(0, 10))) {
+          streak += 1;
+          cursor.setDate(cursor.getDate() - 1);
+        }
+
+        document.getElementById("day-label").textContent =
+          `Day ${state.usageDates.length}`;
+        document.getElementById("streak-value").textContent = streak;
+        saveState();
+      }
+
       function addExp(amount) {
-        state.currentExp += amount;
+        state.spendableExp = Math.max(0, (state.spendableExp || 0) + amount);
+
+        state.currentExp = Math.max(0, state.currentExp + amount);
         let leveledUp = false;
 
         while (state.currentExp >= state.expToNext) {
@@ -482,7 +591,7 @@
             <span class="w-5 h-5 rounded-full border border-ocean/40 flex items-center justify-center text-xs ${task.done ? "bg-ocean border-ocean" : ""}">
               ${task.done ? "✓" : ""}
             </span>
-            <span class="text-sm">${task.label}</span>
+            <span class="text-sm">${escapeHTML(task.label)}</span>
           </span>
           <span class="task-exp font-display text-sm text-muted">+${task.exp}</span>
         `;
@@ -566,9 +675,7 @@
         revealBtn.disabled = !bothLocked || q.revealed;
         revealBtn.textContent = q.revealed ? "Revealed" : "Reveal answers";
 
-        document
-          .getElementById("new-question-btn")
-          .classList.toggle("hidden", !q.revealed);
+        document.getElementById("new-question-btn").classList.remove("hidden");
       }
 
       document
@@ -583,6 +690,54 @@
         renderExpBar();
         renderTasks();
         renderQuestion();
+      }
+
+      function escapeHTML(value) {
+        return String(value).replace(/[&<>"]/g, (character) => {
+          const entities = {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+          };
+          return entities[character];
+        });
+      }
+
+      function addTask(event) {
+        event.preventDefault();
+        const label = document.getElementById("task-label").value.trim();
+        const exp = Number(document.getElementById("task-exp").value);
+        if (!label || !Number.isInteger(exp) || exp < 1) return;
+
+        state.tasks.push({
+          id: `task_${Date.now()}`,
+          label,
+          exp,
+          done: false,
+        });
+        saveState();
+        event.target.reset();
+        document.getElementById("task-exp").value = 10;
+        document.getElementById("task-form").classList.add("hidden");
+        renderTasks();
+      }
+
+      function addReward(event) {
+        event.preventDefault();
+        const title = document.getElementById("reward-title").value.trim();
+        const cost = Number(document.getElementById("reward-cost").value);
+        if (!title || !Number.isInteger(cost) || cost < 1) return;
+
+        state.catalog.push({
+          id: `c_${Date.now()}`,
+          title,
+          cost,
+          icon: "🎁",
+        });
+        saveState();
+        event.target.reset();
+        renderRewards();
       }
 
       // Tab switching
@@ -615,22 +770,26 @@
         });
       });
 
+      document.getElementById("add-task-btn").addEventListener("click", () => {
+        document.getElementById("task-form").classList.toggle("hidden");
+      });
+      document
+        .getElementById("cancel-task-btn")
+        .addEventListener("click", () => {
+          document.getElementById("task-form").classList.add("hidden");
+        });
+      document.getElementById("task-form").addEventListener("submit", addTask);
+      document
+        .getElementById("reward-form")
+        .addEventListener("submit", addReward);
+
       // Ensure state backfill for older local saves
       if (state.spendableExp === undefined)
         state.spendableExp = state.currentExp;
       if (!state.inventory) state.inventory = [];
 
-      // Award spendable EXP alongside normal progression
-      const originalAddExp = addExp;
-      function addExp(amount) {
-        if (amount > 0) {
-          state.spendableExp = (state.spendableExp || 0) + amount;
-        }
-        originalAddExp(amount);
-      }
-
       function buyCoupon(couponId) {
-        const item = COUPON_CATALOG.find((c) => c.id === couponId);
+        const item = state.catalog.find((c) => c.id === couponId);
         if (!item || state.spendableExp < item.cost) return;
 
         state.spendableExp -= item.cost;
@@ -677,16 +836,16 @@
         const catalogList = document.getElementById("coupon-catalog-list");
         catalogList.innerHTML = "";
 
-        COUPON_CATALOG.forEach((coupon) => {
+        state.catalog.forEach((coupon) => {
           const canAfford = (state.spendableExp || 0) >= coupon.cost;
           const itemEl = document.createElement("div");
           itemEl.className =
             "bg-surface rounded-2xl px-4 py-3 flex items-center justify-between border border-white/5";
           itemEl.innerHTML = `
       <div class="flex items-center gap-3">
-        <span class="text-2xl">${coupon.icon}</span>
+          <span class="text-2xl">${escapeHTML(coupon.icon)}</span>
         <div>
-          <span class="text-sm font-medium block">${coupon.title}</span>
+          <span class="text-sm font-medium block">${escapeHTML(coupon.title)}</span>
           <span class="text-xs text-muted">${coupon.cost} EXP</span>
         </div>
       </div>
@@ -712,6 +871,8 @@
         const activeItems = state.inventory.filter((i) => !i.used);
         document.getElementById("inventory-count").textContent =
           `${activeItems.length} active`;
+        document.getElementById("stat-coupons").textContent =
+          activeItems.length;
         inventoryList.innerHTML = "";
 
         if (activeItems.length === 0) {
@@ -729,9 +890,9 @@
             "bg-surface-alt rounded-2xl px-4 py-3 flex items-center justify-between border border-ocean/30";
           card.innerHTML = `
       <div class="flex items-center gap-3">
-        <span class="text-2xl">${item.icon}</span>
+        <span class="text-2xl">${escapeHTML(item.icon)}</span>
         <div>
-          <span class="text-sm font-medium block">${item.title}</span>
+          <span class="text-sm font-medium block">${escapeHTML(item.title)}</span>
           <span class="text-[11px] text-muted">Claimed ${item.redeemedAt}</span>
         </div>
       </div>
@@ -746,12 +907,6 @@
             .addEventListener("click", () => useCoupon(item.instanceId));
           inventoryList.appendChild(card);
         });
-
-        // Keep quick stat updated
-        const statSaved = document
-          .getElementById("stat-tasks-done")
-          .parentElement.nextElementSibling.querySelector("span:last-child");
-        if (statSaved) statSaved.textContent = activeItems.length;
       }
 
       // Hook renderRewards into master render()
@@ -761,7 +916,9 @@
         renderRewards();
       };
 
+      registerUsage();
       render();
+      if (!state.dailyQuestion.prompt) newQuestion();
     </script>
   </body>
 </html>
